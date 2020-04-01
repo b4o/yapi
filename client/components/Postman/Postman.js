@@ -18,6 +18,7 @@ import {
 } from 'antd';
 import constants from '../../constants/variable.js';
 import AceEditor from 'client/components/AceEditor/AceEditor';
+import SqlEditor from 'client/components/SqlEditor/SqlEditor';
 import _ from 'underscore';
 import { isJson, deepCopyJson, json5_parse } from '../../common.js';
 import axios from 'axios';
@@ -129,6 +130,7 @@ export default class Run extends Component {
       mock_verify: false,
       enable_script: false,
       test_script: '',
+      sql_script: '',
       hasPlugin: true,
       inputValue: '',
       cursurPosition: { row: 1, column: -1 },
@@ -307,6 +309,12 @@ export default class Run extends Component {
   onOpenTest = d => {
     this.setState({
       test_script: d.text
+    });
+  };
+
+  onSqlTest = d => {
+    this.setState({
+      sql_script: d.text
     });
   };
 
@@ -841,6 +849,15 @@ export default class Run extends Component {
                 onChange={this.handleRequestBody}
                 fullScreen={true}
               />
+
+              <SqlEditor
+                className="pretty-editor"
+                ref={editor => (this.sqlEditor = editor)}
+                data={this.state.req_body_other}
+                mode={req_body_type === 'json' ? null : 'text'}
+                onChange={this.handleRequestBody}
+                fullScreen={true}
+              />
             </div>
 
             {HTTP_METHOD[method].request_body &&
@@ -1040,6 +1057,28 @@ export default class Run extends Component {
                       );
                     })}
                   </div>
+                </Col>
+              </Row>
+            </Tabs.TabPane>
+          ) : null}
+
+          {this.props.type === 'case' ? (
+            <Tabs.TabPane
+              className="sql-test"
+              tab={<Tooltip title="数据库验证脚本，可断言数据库写入结果，使用方法请查看文档">SQLScript</Tooltip>}
+              key="SQLScript"
+            >
+              <p style={{ margin: '10px' }}>注：SQL 脚本只有做自动化测试才执行</p>
+              <Row>
+                <Col span="24">
+                  <SqlEditor
+                  onChange={this.onSqlTest}
+                  className="case-script"
+                  data={this.state.sql_script}
+                  ref={sqlEditor => {
+                    this.sqlEditor = sqlEditor;
+                  }}
+                />
                 </Col>
               </Row>
             </Tabs.TabPane>

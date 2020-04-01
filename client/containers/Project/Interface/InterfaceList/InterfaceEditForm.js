@@ -10,6 +10,7 @@ import { message, Affix, Tabs, Modal } from 'antd';
 import EasyDragSort from '../../../../components/EasyDragSort/EasyDragSort.js';
 import mockEditor from 'client/components/AceEditor/mockEditor';
 import AceEditor from 'client/components/AceEditor/AceEditor';
+import SqlEditor from 'client/components/SqlEditor/SqlEditor';
 import axios from 'axios';
 import { MOCK_SOURCE } from '../../../../constants/variable.js';
 import Editor from 'common/tui-editor/dist/tui-editor-Editor-all.min.js';
@@ -1135,6 +1136,16 @@ class InterfaceEditForm extends Component {
                   />
                 )}
               </Col>
+              <Col>
+                {!this.props.form.getFieldValue('req_body_is_json_schema') && (
+                  <SqlEditor
+                    className="interface-editor"
+                    data={this.state.req_body_other}
+                    onChange={this.handleReqBody}
+                    fullScreen={true}
+                  />
+                )}
+              </Col>
             </Row>
 
             {this.props.form.getFieldValue('req_body_type') === 'file' &&
@@ -1248,6 +1259,18 @@ class InterfaceEditForm extends Component {
                         fullScreen={true}
                       />
                     )}
+
+                  {!this.props.form.getFieldValue('res_body_is_json_schema') &&
+                    this.state.jsonType === 'tpl' && (
+                      <SqlEditor
+                        className="interface-editor"
+                        data={this.state.res_body}
+                        onChange={this.handleResBody}
+                        ref={editor => (this.resBodyEditor = editor)}
+                        fullScreen={true}
+                      />
+                    )}
+
                   <div
                     id="mock-preview"
                     style={{

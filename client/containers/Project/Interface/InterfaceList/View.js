@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import { Table, Icon, Row, Col, Tooltip, message } from 'antd';
 import { Link } from 'react-router-dom';
 import AceEditor from 'client/components/AceEditor/AceEditor';
+import SqlEditor from 'client/components/SqlEditor/SqlEditor';
 import { formatTime, safeArray } from '../../../../common.js';
 import ErrMsg from '../../../../components/ErrMsg/ErrMsg.js';
 import variable from '../../../../constants/variable';
@@ -123,6 +124,7 @@ class View extends Component {
           <div className="colBody">
             {/* <div id="vres_body_json" style={{ minHeight: h * 16 + 100 }}></div> */}
             <AceEditor data={res_body} readOnly={true} style={{ minHeight: 600 }} />
+            <SqlEditor data={res_body} readOnly={true} style={{ minHeight: 600 }} />
           </div>
         );
       }
@@ -130,6 +132,7 @@ class View extends Component {
       return (
         <div className="colBody">
           <AceEditor data={res_body} readOnly={true} mode="text" style={{ minHeight: 300 }} />
+          <SqlEditor data={res_body} readOnly={true} mode="text" style={{ minHeight: 300 }} />
         </div>
       );
     }
@@ -143,6 +146,12 @@ class View extends Component {
         return (
           <div className="colBody">
             <AceEditor
+              data={req_body_other}
+              readOnly={true}
+              style={{ minHeight: 300 }}
+              mode={req_body_type === 'json' ? 'javascript' : 'text'}
+            />
+            <SqlEditor
               data={req_body_other}
               readOnly={true}
               style={{ minHeight: 300 }}

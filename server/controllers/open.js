@@ -173,6 +173,7 @@ class openController extends baseController {
     });
     return result;
   }
+  //通过api执行自动化测试
   async runAutoTest(ctx) {
     if (!this.$tokenAuth) {
       return (ctx.body = yapi.commons.resReturn(null, 40022, 'token 验证失败'));
@@ -296,6 +297,7 @@ class openController extends baseController {
     }
   }
 
+  // 执行自动化测试
   async handleTest(interfaceData) {
     let requestParams = {};
     let options;
@@ -342,6 +344,7 @@ class openController extends baseController {
         }
       );
 
+// 验证响应结果
       await this.handleScriptTest(interfaceData, responseData, validRes, requestParams);
       result.params = requestParams;
       if (validRes.length === 0) {
@@ -364,6 +367,7 @@ class openController extends baseController {
     return result;
   }
 
+  //执行断言脚本
   async handleScriptTest(interfaceData, response, validRes, requestParams) {
     
     try {
@@ -371,7 +375,9 @@ class openController extends baseController {
         response: response,
         records: this.records,
         script: interfaceData.test_script,
-        params: requestParams
+        sqlScript: interfaceData.sql_script,
+        params: requestParams,
+        interfaceData: interfaceData
       }, interfaceData.col_id, interfaceData.interface_id, this.getUid());
       if (test.errcode !== 0) {
         test.data.logs.forEach(item => {

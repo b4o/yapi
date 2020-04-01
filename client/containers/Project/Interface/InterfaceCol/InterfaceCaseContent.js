@@ -123,6 +123,7 @@ export default class InterfaceCaseContent extends Component {
       req_body_form,
       req_body_other,
       test_script,
+      sql_script,
       enable_script,
       test_res_body,
       test_res_header
@@ -141,6 +142,7 @@ export default class InterfaceCaseContent extends Component {
       req_body_form,
       req_body_other,
       test_script,
+      sql_script,
       enable_script,
       test_res_body,
       test_res_header

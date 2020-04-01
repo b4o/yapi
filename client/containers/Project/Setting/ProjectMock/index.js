@@ -3,6 +3,7 @@ import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import { Form, Switch, Button, Icon, Tooltip, message } from 'antd';
 import AceEditor from '../../../../components/AceEditor/AceEditor';
+import SqlEditor from '../../../../components/SqlEditor/SqlEditor';
 const FormItem = Form.Item;
 import { updateProjectMock, getProject } from '../../../../reducer/modules/project';
 
@@ -119,6 +120,11 @@ export default class ProjectMock extends Component {
           </FormItem>
           <FormItem label="Mock脚本" {...formItemLayout}>
             <AceEditor
+              data={this.state.project_mock_script}
+              onChange={this.handleMockJsInput}
+              style={{ minHeight: '500px' }}
+            />
+            <SqlEditor
               data={this.state.project_mock_script}
               onChange={this.handleMockJsInput}
               style={{ minHeight: '500px' }}

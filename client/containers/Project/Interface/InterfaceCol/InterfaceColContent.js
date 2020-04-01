@@ -15,6 +15,7 @@ import HTML5Backend from 'react-dnd-html5-backend';
 import { getToken, getEnv } from '../../../../reducer/modules/project';
 import { DragDropContext } from 'react-dnd';
 import AceEditor from 'client/components/AceEditor/AceEditor';
+import SqlEditor from 'client/components/SqlEditor/SqlEditor';
 import * as Table from 'reactabular-table';
 import * as dnd from 'reactabular-dnd';
 import * as resolve from 'table-resolver';
@@ -118,6 +119,7 @@ class InterfaceColContent extends Component {
 
       advVisible: false,
       curScript: '',
+      sqlScript: '',
       enableScript: false,
       autoVisible: false,
       mode: 'html',
@@ -406,9 +408,11 @@ class InterfaceColContent extends Component {
         response: response,
         records: this.records,
         script: interfaceData.test_script,
+        sqlScript: interfaceData.sql_script,
         params: requestParams,
         col_id: this.props.currColId,
-        interface_id: interfaceData.interface_id
+        interface_id: interfaceData.interface_id,
+        interfaceData: interfaceData
       });
       if (test.data.errcode !== 0) {
         test.data.data.logs.forEach(item => {
@@ -516,6 +520,7 @@ class InterfaceColContent extends Component {
     this.setState({
       enableScript: findCase.enable_script,
       curScript: findCase.test_script,
+      sqlScript: findCase.sql_script,
       advVisible: true,
       curCaseid: id
     });
@@ -530,10 +535,11 @@ class InterfaceColContent extends Component {
   };
 
   handleAdvOk = async () => {
-    const { curCaseid, enableScript, curScript } = this.state;
+    const { curCaseid, enableScript, curScript, sqlScript } = this.state;
     const res = await axios.post('/api/col/up_case', {
       id: curCaseid,
       test_script: curScript,
+      sql_script: sqlScript,
       enable_script: enableScript
     });
     if (res.data.errcode === 0) {
@@ -613,7 +619,7 @@ class InterfaceColContent extends Component {
       ...setting
 
     };
-    console.log(params)
+    // console.log(params)
 
     axios.post('/api/col/up_col', params).then(async res => {
       if (res.data.errcode) {
@@ -979,6 +985,28 @@ class InterfaceColContent extends Component {
                   data={this.state.commonSetting.checkScript.content}
                   ref={aceEditor => {
                     this.aceEditor = aceEditor;
+                  }}
+                />
+              </Col>
+              <Col className="col-item"  span="14">
+                <div><Switch onChange={e=>{
+                  let {commonSetting} = this.state;
+                  this.setState({
+                    commonSetting :{
+                      ...commonSetting,
+                      checkScript: {
+                        ...this.state.checkScript,
+                        enable: e
+                      }
+                    }
+                  })
+                }} checked={this.state.commonSetting.checkScript.enable}  checkedChildren="开" unCheckedChildren="关"  /></div>
+                <SqlEditor
+                  onChange={this.onChangeTest}
+                  className="case-script"
+                  data={this.state.commonSetting.checkScript.content}
+                  ref={sqlEditor => {
+                    this.sqlEditor = sqlEditor;
                   }}
                 />
               </Col>

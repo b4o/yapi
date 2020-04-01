@@ -13,16 +13,26 @@ const json5 = require('json5');
 const _ = require('underscore');
 const Ajv = require('ajv');
 const Mock = require('mockjs');
-
+const JSONPath = require('advanced-json-path');
 
 
 const ejs = require('easy-json-schema');
+const sqlexec = require('../../common/sqlexec')
 
 const jsf = require('json-schema-faker');
-const { schemaValidator } = require('../../common/utils');
+const {
+  schemaValidator
+} = require('../../common/utils');
 const http = require('http');
 
-jsf.extend('mock', function () {
+const {
+  handleParams,
+  crossRequest,
+  handleCurrDomain,
+  checkNameIsExistInArray
+} = require('../../common/postmanLib.js');
+
+jsf.extend("mock", function () {
   return {
     mock: function (xx) {
       return Mock.mock(xx);
@@ -192,8 +202,7 @@ exports.sendMail = (options, cb) => {
     };
 
   try {
-    yapi.mail.sendMail(
-      {
+    yapi.mail.sendMail({
         from: yapi.WEBCONFIG.mail.from,
         to: options.to,
         subject: options.subject,
@@ -233,7 +242,9 @@ exports.filterRes = (list, rules) => {
 
 exports.handleVarPath = (pathname, params) => {
   function insertParams(name) {
-    if (!_.find(params, { name: name })) {
+    if (!_.find(params, {
+        name: name
+      })) {
       params.push({
         name: name,
         desc: ''
@@ -282,7 +293,9 @@ exports.verifyPath = path => {
  */
 exports.sandbox = (sandbox, script) => {
   try {
-    const { NodeVM } = require('vm2');
+    const {
+      NodeVM
+    } = require('vm2');
     sandbox = sandbox || {};
     const vm = new NodeVM({
       require: {
@@ -384,7 +397,9 @@ exports.validateParams = (schema2, params) => {
   let message = '请求参数 ';
   if (!valid) {
     localize.zh(validate.errors);
-    message += ajv.errorsText(validate.errors, { separator: '\n' });
+    message += ajv.errorsText(validate.errors, {
+      separator: '\n'
+    });
   }
 
   return {
@@ -460,7 +475,7 @@ function handleParamsValue(params, val) {
   let value = {};
   try {
     params = params.toObject();
-  } catch (e) { }
+  } catch (e) {}
   if (params.length === 0 || val.length === 0) {
     return params;
   }
@@ -528,8 +543,8 @@ function convertString(variable) {
   }
 }
 
-
-exports.runCaseScript = async function runCaseScript(params, colId, interfaceId) {
+//测试断言
+exports.runCaseScript = async function runCaseScript(params, colId, interfaceId, userid) {
   const colInst = yapi.getInst(interfaceColModel);
   let colData = await colInst.get(colId);
   const logs = [];
@@ -579,27 +594,138 @@ ${JSON.stringify(schema, null, 2)}`)
       let globalScript = colData.checkScript.content;
       // script 是断言
       if (globalScript) {
-        logs.push('执行脚本：' + globalScript)
+        logs.push('执行全局脚本：' + globalScript)
         result = yapi.commons.sandbox(context, globalScript);
       }
     }
 
+    //数据库验证
+    let flag = true; //标记SQL验证通过
+    let sqlScript = params.sqlScript;
+    if (sqlScript && params.response.body != null && params.response.body != '') {
+      //匹配jsonpath \$(\.[a-zA-Z0-9_]+)+
+      let verifies = sqlScript.match(/\$(\.[a-zA-Z0-9_]+)+/g)
+      if (verifies != null) {
+        verifies.forEach(sql => {
+          let vr = JSONPath(params.response.body, sql)
+          sqlScript = sqlScript.replace(sql, vr)
+        });
+      }
+
+      //替换使用依赖接口的参数records[47].params. 或者records[47].body.
+      let replparam = sqlScript.match(/records\[[0-9]+\](\.[a-zA-Z0-9_]+)+/g)
+      if (replparam != null) {
+        replparam.forEach(sql => {
+          let vr = JSONPath(context, sql)
+          sqlScript = sqlScript.replace(sql, vr)
+        });
+      }
+
+      //替换使用输入参数
+      let reqparam = sqlScript.match(/params(\.[a-zA-Z0-9_]+)+/g)
+      if (reqparam != null) {
+        reqparam.forEach(sql => {
+          let vr = JSONPath(context, '$.' + sql)
+          sqlScript = sqlScript.replace(sql, vr)
+        });
+      }
+
+
+      logs.push("====================验证数据库====================");
+      logs.push(sqlScript);
+      logs.push("-------------------------------------------------");
+      //开始执行sql并验证数据
+      let currDomain = handleCurrDomain(params.interfaceData.env, params.interfaceData.case_env);
+      let sqljson = JSON.parse(sqlScript);
+      for (let i = 0; i < sqljson.length; i++) {
+        let sql = sqljson[i]
+        logs.push('开始验证 ' + sql.database + ' 库');
+        let vers = sql.verifies;
+        for (let j = 0; j < vers.length; j++) {
+          //查询数据库
+          let res = await sqlexec.query(vers[j].sqlst, sql.database, currDomain)
+          logs.push('---第 ' + (j + 1) + '组 ' + vers[j].sqlst);
+
+          res.forEach((ret, idx) => {
+            logs.push('---第 ' + (idx + 1) + ' 条数据 ');
+            vers[j].expects.toString().split("&&").forEach((veri, index) => {
+              //循环验证每个表达式
+              veri.split(";").forEach(v => {
+                let idx = 0; //运算符起始位置
+                let oper = '='; //运算符
+                let operl = 1; //运算符长度
+                if (v.indexOf('>=') != -1) {
+                  idx = v.indexOf('>=')
+                  oper = '>='
+                  operl = 2
+                } else if (v.indexOf('<=') != -1) {
+                  idx = v.indexOf('<=')
+                  oper = '<='
+                  operl = 2
+                } else if (v.indexOf('!=') != -1) {
+                  idx = v.indexOf('!=')
+                  oper = '!='
+                  operl = 2
+                } else if (v.indexOf('=') != -1) {
+                  idx = v.indexOf('=')
+                  oper = '='
+                } else if (v.indexOf('<') != -1) {
+                  idx = v.indexOf('<')
+                  oper = '<'
+                } else if (v.indexOf('>') != -1) {
+                  idx = v.indexOf('>')
+                  oper = '>'
+                }
+                let left = v.substring(0, idx)
+                let right = v.substring(idx + operl)
+                let val = eval('ret.' + left)
+                if (this.compareTo(right, val, oper)) {
+                  logs.push(left + ' ' + oper + ' ' + right)
+                } else {
+                  flag = false
+                  logs.push(left + ' ' + oper + ' ' + right + ' 【错误】 实际值：' + val)
+                }
+              })
+            });
+          })
+        }
+      }
+    }
 
     let script = params.script;
     // script 是断言
     if (script) {
-      logs.push('执行脚本:' + script)
+      logs.push("===================验证响应报文===================");
+      logs.push(script);
+      logs.push("--------------------------------------------------");
       result = yapi.commons.sandbox(context, script);
     }
     result.logs = logs;
+    if (!flag) throw '【数据库验证未通过】'
     return yapi.commons.resReturn(result);
   } catch (err) {
     logs.push(convertString(err));
     result.logs = logs;
-    logs.push(err.name + ': ' + err.message)
+    //    logs.push(err.name + ': ' + err.message)
     return yapi.commons.resReturn(result, 400, err.name + ': ' + err.message);
   }
 };
+//比较两个值
+exports.compareTo = function (left, right, operator) {
+  if (operator == '=') {
+    return left == right
+  } else if (operator == '!=') {
+    return left != right
+  } else if (operator == '>') {
+    return left > right
+  } else if (operator == '<') {
+    return left < right
+  } else if (operator == '>=') {
+    return left >= right
+  } else if (operator == '<=') {
+    return left <= right
+  }
+}
 
 exports.getUserdata = async function getUserdata(uid, role) {
   role = role || 'dev';
@@ -650,8 +776,7 @@ exports.handleMockScript = function (script, context) {
 exports.createWebAPIRequest = function (ops) {
   return new Promise(function (resolve, reject) {
     let req = '';
-    let http_client = http.request(
-      {
+    let http_client = http.request({
         host: ops.hostname,
         method: 'GET',
         port: ops.port,
@@ -663,7 +788,9 @@ exports.createWebAPIRequest = function (ops) {
         });
         res.setEncoding('utf8');
         if (res.statusCode != 200) {
-          reject({ message: 'statusCode != 200' });
+          reject({
+            message: 'statusCode != 200'
+          });
         } else {
           res.on('data', function (chunk) {
             req += chunk;
@@ -675,9 +802,10 @@ exports.createWebAPIRequest = function (ops) {
       }
     );
     http_client.on('error', (e) => {
-      reject({ message: `request error: ${e.message}` });
+      reject({
+        message: `request error: ${e.message}`
+      });
     });
     http_client.end();
   });
 }
-
