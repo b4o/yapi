@@ -603,30 +603,30 @@ ${JSON.stringify(schema, null, 2)}`)
     let flag = true; //标记SQL验证通过
     let sqlScript = params.sqlScript;
     if (sqlScript && params.response.body != null && params.response.body != '') {
-      //匹配jsonpath \$(\.[a-zA-Z0-9_]+)+
-      let verifies = sqlScript.match(/\$(\.[a-zA-Z0-9_]+)+/g)
-      if (verifies != null) {
-        verifies.forEach(sql => {
-          let vr = JSONPath(params.response.body, sql)
-          sqlScript = sqlScript.replace(sql, vr)
+
+      //替换使用依赖接口的参数records[47].params. 或者records[47].body.
+      let replparam = sqlScript.match(/=records\[[0-9]+\](\.[a-zA-Z0-9_]+)+/g)
+      if (replparam != null) {
+        replparam.forEach(sql => {
+          let vr = JSONPath(context, '$.' + sql.substring(1))
+          sqlScript = sqlScript.replace(sql, '=' + vr)
         });
       }
 
-      //替换使用依赖接口的参数records[47].params. 或者records[47].body.
-      let replparam = sqlScript.match(/records\[[0-9]+\](\.[a-zA-Z0-9_]+)+/g)
-      if (replparam != null) {
-        replparam.forEach(sql => {
-          let vr = JSONPath(context, sql)
-          sqlScript = sqlScript.replace(sql, vr)
+      let verifies = sqlScript.match(/=body(\.[a-zA-Z0-9_]+)+/g)
+      if (verifies != null) {
+        verifies.forEach(sql => {
+          let vr = JSONPath(context, '$.' + sql.substring(1))
+          sqlScript = sqlScript.replace(sql, '=' + vr)
         });
       }
 
       //替换使用输入参数
-      let reqparam = sqlScript.match(/params(\.[a-zA-Z0-9_]+)+/g)
+      let reqparam = sqlScript.match(/=params(\.[a-zA-Z0-9_]+)+/g)
       if (reqparam != null) {
         reqparam.forEach(sql => {
-          let vr = JSONPath(context, '$.' + sql)
-          sqlScript = sqlScript.replace(sql, vr)
+          let vr = JSONPath(context, '$.' + sql.substring(1))
+          sqlScript = sqlScript.replace(sql, '=' +vr)
         });
       }
 
@@ -679,7 +679,7 @@ ${JSON.stringify(schema, null, 2)}`)
                 let left = v.substring(0, idx)
                 let right = v.substring(idx + operl)
                 let val = eval('ret.' + left)
-                if (this.compareTo(right, val, oper)) {
+                if (this.compareTo(val, right, oper)) {
                   logs.push(left + ' ' + oper + ' ' + right)
                 } else {
                   flag = false
@@ -712,6 +712,7 @@ ${JSON.stringify(schema, null, 2)}`)
 };
 //比较两个值
 exports.compareTo = function (left, right, operator) {
+  console.log(left,operator,right)
   if (operator == '=') {
     return left == right
   } else if (operator == '!=') {
