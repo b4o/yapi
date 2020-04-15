@@ -605,28 +605,28 @@ ${JSON.stringify(schema, null, 2)}`)
     if (sqlScript && params.response.body != null && params.response.body != '') {
 
       //替换使用依赖接口的参数records[47].params. 或者records[47].body.
-      let replparam = sqlScript.match(/=records\[[0-9]+\](\.[a-zA-Z0-9_]+)+/g)
+      let replparam = sqlScript.match(/\$\.records\[[0-9]+\](\.[a-zA-Z0-9_]+)+/g)
       if (replparam != null) {
         replparam.forEach(sql => {
-          let vr = JSONPath(context, '$.' + sql.substring(1))
-          sqlScript = sqlScript.replace(sql, '=' + vr)
+          let vr = JSONPath(context, sql)
+          sqlScript = sqlScript.replace(sql, vr)
         });
       }
 
-      let verifies = sqlScript.match(/=body(\.[a-zA-Z0-9_]+)+/g)
+      let verifies = sqlScript.match(/\$\.body(\.[a-zA-Z0-9_]+)+/g)
       if (verifies != null) {
         verifies.forEach(sql => {
-          let vr = JSONPath(context, '$.' + sql.substring(1))
-          sqlScript = sqlScript.replace(sql, '=' + vr)
+          let vr = JSONPath(context, sql)
+          sqlScript = sqlScript.replace(sql, vr)
         });
       }
 
       //替换使用输入参数
-      let reqparam = sqlScript.match(/=params(\.[a-zA-Z0-9_]+)+/g)
+      let reqparam = sqlScript.match(/\$\.params(\.[a-zA-Z0-9_]+)+/g)
       if (reqparam != null) {
         reqparam.forEach(sql => {
-          let vr = JSONPath(context, '$.' + sql.substring(1))
-          sqlScript = sqlScript.replace(sql, '=' +vr)
+          let vr = JSONPath(context, sql)
+          sqlScript = sqlScript.replace(sql, vr)
         });
       }
 
@@ -712,7 +712,6 @@ ${JSON.stringify(schema, null, 2)}`)
 };
 //比较两个值
 exports.compareTo = function (left, right, operator) {
-  console.log(left,operator,right)
   if (operator == '=') {
     return left == right
   } else if (operator == '!=') {
